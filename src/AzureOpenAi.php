@@ -123,7 +123,7 @@ class AzureOpenAi
             $this->stream_method = $stream;
         }
 
-        $url = $this->urlBuilder->chatUrl($opts['model']);
+        $url = $this->urlBuilder->chatUrl(str_replace('.', '', $opts['model']));
         unset($opts['model']);
 
         return $this->sendRequest($url, 'POST', $opts);
