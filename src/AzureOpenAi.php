@@ -87,7 +87,7 @@ class AzureOpenAi
 
         $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
-        if ($httpCode != 200) {
+        if (! in_array($httpCode, [200, 201])) {
             $errJson = json_decode($response, true);
             $httpErrMsg = "An error occurred [{$httpCode}]";
             if (isset($errJson['error'])) {
