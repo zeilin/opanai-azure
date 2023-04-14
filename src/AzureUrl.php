@@ -48,9 +48,9 @@ class AzureUrl
         return $this->buildUrl("/files/{$fileId}/content");
     }
 
-    public function importContentUrl(string $fileId)
+    public function importContentUrl()
     {
-        return $this->buildUrl("/files/{$fileId}/import");
+        return $this->buildUrl("/files/import");
     }
 
     public function filesUrl()

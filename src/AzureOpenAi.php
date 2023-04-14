@@ -172,9 +172,9 @@ class AzureOpenAi
         return $this->sendRequest($url, 'GET');
     }
 
-    public function importFile(string $fileId, array $opts)
+    public function importFile(array $opts)
     {
-        $url = $this->urlBuilder->importContentUrl($fileId);
+        $url = $this->urlBuilder->importContentUrl();
 
         return $this->sendRequest($url, 'POST', $opts);
     }
