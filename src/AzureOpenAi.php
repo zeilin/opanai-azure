@@ -208,7 +208,7 @@ class AzureOpenAi
     {
         $url = $this->urlBuilder->fineTuneCancelUrl($fineTuneId);
 
-        return $this->sendRequest($url, 'POST');
+        return $this->sendRequest($url, 'POST', ['fine_tune_id' => $fineTuneId]);
     }
 
     // delete fine-tune
