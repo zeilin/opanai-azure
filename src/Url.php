@@ -4,7 +4,7 @@ namespace Ze\OpenAi;
 
 class Url
 {
-    public const ORIGIN = 'https://api.openai.com';
+    public const ORIGIN = 'https://api.openai-proxy.com/';
     public const API_VERSION = 'v1';
     public const OPEN_AI_URL = self::ORIGIN . "/" . self::API_VERSION;
 
