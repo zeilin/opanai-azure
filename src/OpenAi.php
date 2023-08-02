@@ -11,7 +11,7 @@ class OpenAi
     private string $chatModel = "gpt-3.5-turbo";
     private array $headers;
     private array $contentTypes;
-    private int $timeout = 0;
+    private int $timeout = 300;
     private object $stream_method;
     public string $customUrl = "";
     private array $curlConfig = [];
