@@ -16,7 +16,7 @@ class AzureOpenAi
     ];
     private $curlConfig = [];
     private $stream_method;
-
+    private $timeout = 300;
     private $urlBuilder;
 
     public function __construct(
@@ -45,6 +45,11 @@ class AzureOpenAi
         $this->curlConfig = $conf;
     }
 
+    public function setTimeout(int $timeout)
+    {
+        $this->timeout = $timeout;
+    }
+
     private function sendRequest(string $url, string $method, array $opts = [])
     {
         $post_fields = json_encode($opts);
@@ -61,7 +66,7 @@ class AzureOpenAi
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 300,
+                CURLOPT_TIMEOUT => $this->timeout,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
                 CURLOPT_CUSTOMREQUEST => $method,
