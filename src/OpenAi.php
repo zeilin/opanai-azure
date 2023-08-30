@@ -6,17 +6,17 @@ use Ze\OpenAi\Exceptions\OpenAiException;
 
 class OpenAi
 {
-    private string $engine = "davinci";
-    private string $model = "text-davinci-002";
+    private string $model = "text-davinci-003";
     private string $chatModel = "gpt-3.5-turbo";
     private array $headers;
     private array $contentTypes;
-    private int $timeout = 300;
-    private object $stream_method;
-    public string $customUrl = "";
-    private array $curlConfig = [];
+    private object $streamMethod;
 
-    public function __construct($OPENAI_API_KEY, $OPENAI_ORG = "", $customUrl = "")
+    private int $timeout = 300;
+    private array $curlConfig = [];
+    private string $apiBaseUrl = 'https://api.openai.com/v1';
+
+    public function __construct(string $OPENAI_API_KEY = '', string $OPENAI_ORG = '')
     {
         $this->contentTypes = [
             "application/json" => "Content-Type: application/json",
@@ -31,9 +31,11 @@ class OpenAi
         if ($OPENAI_ORG != "") {
             $this->headers[] = "OpenAI-Organization: $OPENAI_ORG";
         }
-        if ($customUrl != "") {
-            $this->customUrl = $customUrl;
-        }
+    }
+
+    public function setApiBaseUrl(string $url)
+    {
+        $this->apiBaseUrl = $url;
     }
 
     public function setCurlConfig(array $conf)
@@ -41,52 +43,21 @@ class OpenAi
         $this->curlConfig = $conf;
     }
 
-    /**
-     *
-     * @return bool|string
-     */
+    public function setTimeout(int $timeout)
+    {
+        $this->timeout = $timeout;
+    }
+
     public function listModels()
     {
-        $url = Url::fineTuneModel();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'GET');
+        return $this->sendRequest('/models', 'GET');
     }
 
-    /**
-     * @param $model
-     * @return bool|string
-     */
     public function retrieveModel($model)
     {
-        $model = "/$model";
-        $url = Url::fineTuneModel() . $model;
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'GET');
+        return $this->sendRequest('/models/' . $model, 'GET');
     }
 
-    /**
-     * @param $opts
-     * @return bool|string
-     * @deprecated
-     */
-    public function complete($opts)
-    {
-        $engine = $opts['engine'] ?? $this->engine;
-        $url = Url::completionURL($engine);
-        unset($opts['engine']);
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
-    }
-
-    /**
-     * @param $opts
-     * @param null $stream
-     * @return bool|string
-     * @throws OpenAiException
-     */
     public function completion($opts, $stream = null)
     {
         if ($stream != null && array_key_exists('stream', $opts)) {
@@ -96,123 +67,39 @@ class OpenAi
                 );
             }
 
-            $this->stream_method = $stream;
+            $this->streamMethod = $stream;
         }
 
         $opts['model'] = $opts['model'] ?? $this->model;
-        $url = Url::completionsURL();
-        $this->baseUrl($url);
 
-        return $this->sendRequest($url, 'POST', $opts);
+        return $this->sendRequest('/completions', 'POST', $opts);
     }
 
-    /**
-     * @param $opts
-     * @return bool|string
-     */
     public function createEdit($opts)
     {
-        $url = Url::editsUrl();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
+        return $this->sendRequest('/edits', 'POST', $opts);
     }
 
-    /**
-     * @param $opts
-     * @return bool|string
-     */
     public function image($opts)
     {
-        $url = Url::imageUrl() . "/generations";
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
+        return $this->sendRequest('/images/generations', 'POST', $opts);
     }
 
-    /**
-     * @param $opts
-     * @return bool|string
-     */
     public function imageEdit($opts)
     {
-        $url = Url::imageUrl() . "/edits";
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
+        return $this->sendRequest('/images/edits', 'POST', $opts);
     }
 
-    /**
-     * @param $opts
-     * @return bool|string
-     */
     public function createImageVariation($opts)
     {
-        $url = Url::imageUrl() . "/variations";
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
+        return $this->sendRequest('/images/variations', 'POST', $opts);
     }
 
-    /**
-     * @param $opts
-     * @return bool|string
-     * @deprecated
-     */
-    public function search($opts)
-    {
-        $engine = $opts['engine'] ?? $this->engine;
-        $url = Url::searchURL($engine);
-        unset($opts['engine']);
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
-    }
-
-    /**
-     * @param $opts
-     * @return bool|string
-     * @deprecated
-     */
-    public function answer($opts)
-    {
-        $url = Url::answersUrl();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
-    }
-
-    /**
-     * @param $opts
-     * @return bool|string
-     * @deprecated
-     */
-    public function classification($opts)
-    {
-        $url = Url::classificationsUrl();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
-    }
-
-    /**
-     * @param $opts
-     * @return bool|string
-     */
     public function moderation($opts)
     {
-        $url = Url::moderationUrl();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
+        return $this->sendRequest('/moderations', 'POST', $opts);
     }
 
-    /**
-     * @param $opts
-     * @param null $stream
-     * @return bool|string
-     * @throws OpenAiException
-     */
     public function chat($opts, $stream = null)
     {
         if ($stream != null && array_key_exists('stream', $opts)) {
@@ -222,236 +109,93 @@ class OpenAi
                 );
             }
 
-            $this->stream_method = $stream;
+            $this->streamMethod = $stream;
         }
 
         $opts['model'] = $opts['model'] ?? $this->chatModel;
-        $url = Url::chatUrl();
-        $this->baseUrl($url);
 
-        return $this->sendRequest($url, 'POST', $opts);
+        return $this->sendRequest('/chat/completions', 'POST', $opts);
     }
 
-    /**
-     * @param $opts
-     * @return bool|string
-     */
     public function transcribe($opts)
     {
-        $url = Url::transcriptionsUrl();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
+        return $this->sendRequest('/audio/transcriptions', 'POST', $opts);
     }
 
-    /**
-     * @param $opts
-     * @return bool|string
-     */
     public function translate($opts)
     {
-        $url = Url::translationsUrl();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
+        return $this->sendRequest('/audio/translations', 'POST', $opts);
     }
 
-    /**
-     * @param $opts
-     * @return bool|string
-     */
     public function uploadFile($opts)
     {
-        $url = Url::filesUrl();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
+        return $this->sendRequest('/files', 'POST', $opts);
     }
 
-    /**
-     * @return bool|string
-     */
     public function listFiles()
     {
-        $url = Url::filesUrl();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'GET');
+        return $this->sendRequest('/files', 'GET');
     }
 
-    /**
-     * @param $file_id
-     * @return bool|string
-     */
-    public function retrieveFile($file_id)
+    public function retrieveFile($fileId)
     {
-        $file_id = "/$file_id";
-        $url = Url::filesUrl() . $file_id;
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'GET');
+        return $this->sendRequest('/files/' . $fileId, 'GET');
     }
 
-    /**
-     * @param $file_id
-     * @return bool|string
-     */
-    public function retrieveFileContent($file_id)
+    public function retrieveFileContent($fileId)
     {
-        $file_id = "/$file_id/content";
-        $url = Url::filesUrl() . $file_id;
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'GET');
+        return $this->sendRequest('/files/' . $fileId . '/content', 'GET');
     }
 
-    /**
-     * @param $file_id
-     * @return bool|string
-     */
-    public function deleteFile($file_id)
+    public function deleteFile($fileId)
     {
-        $file_id = "/$file_id";
-        $url = Url::filesUrl() . $file_id;
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'DELETE');
+        return $this->sendRequest('/files/' . $fileId, 'DELETE');
     }
 
-    /**
-     * @param $opts
-     * @return bool|string
-     */
     public function createFineTune($opts)
     {
-        $url = Url::fineTuneUrl();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
+        return $this->sendRequest('/fine-tunes', 'POST', $opts);
     }
 
-    /**
-     * @return bool|string
-     */
     public function listFineTunes()
     {
-        $url = Url::fineTuneUrl();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'GET');
+        return $this->sendRequest('/fine-tunes', 'GET');
     }
 
-    /**
-     * @param $fine_tune_id
-     * @return bool|string
-     */
-    public function retrieveFineTune($fine_tune_id)
+    public function retrieveFineTune($fineTuneId)
     {
-        $fine_tune_id = "/$fine_tune_id";
-        $url = Url::fineTuneUrl() . $fine_tune_id;
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'GET');
+        return $this->sendRequest('/fine-tunes/' .$fineTuneId, 'GET');
     }
 
-    /**
-     * @param $fine_tune_id
-     * @return bool|string
-     */
-    public function cancelFineTune($fine_tune_id)
+    public function cancelFineTune($fineTuneId)
     {
-        $fine_tune_id = "/$fine_tune_id/cancel";
-        $url = Url::fineTuneUrl() . $fine_tune_id;
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST');
+        return $this->sendRequest('/fine-tunes/' .$fineTuneId . '/cancel', 'POST');
     }
 
-    /**
-     * @param $fine_tune_id
-     * @return bool|string
-     */
-    public function listFineTuneEvents($fine_tune_id)
+    public function listFineTuneEvents($fineTuneId)
     {
-        $fine_tune_id = "/$fine_tune_id/events";
-        $url = Url::fineTuneUrl() . $fine_tune_id;
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'GET');
+        return $this->sendRequest('/fine-tunes/' .$fineTuneId . '/events', 'GET');
     }
 
-    /**
-     * @param $fine_tune_id
-     * @return bool|string
-     */
-    public function deleteFineTune($fine_tune_id)
+    public function deleteFineTune($fineTuneId)
     {
-        $fine_tune_id = "/$fine_tune_id";
-        $url = Url::fineTuneModel() . $fine_tune_id;
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'DELETE');
+        return $this->sendRequest('/fine-tunes/' .$fineTuneId, 'DELETE');
     }
 
-    /**
-     * @param
-     * @return bool|string
-     * @deprecated
-     */
-    public function engines()
-    {
-        $url = Url::enginesUrl();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'GET');
-    }
-
-    /**
-     * @param $engine
-     * @return bool|string
-     * @deprecated
-     */
-    public function engine($engine)
-    {
-        $url = Url::engineUrl($engine);
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'GET');
-    }
-
-    /**
-     * @param $opts
-     * @return bool|string
-     */
     public function embeddings($opts)
     {
-        $url = Url::embeddings();
-        $this->baseUrl($url);
-
-        return $this->sendRequest($url, 'POST', $opts);
+        return $this->sendRequest('/embeddings', 'POST', $opts);
     }
 
-    /**
-     * @param int $timeout
-     */
-    public function setTimeout(int $timeout)
-    {
-        $this->timeout = $timeout;
-    }
-
-    /**
-     * @param string $url
-     * @param string $method
-     * @param array $opts
-     * @return bool|string
-     */
     private function sendRequest(string $url, string $method, array $opts = [])
     {
-        $post_fields = json_encode($opts);
+        $url = $this->apiBaseUrl . '/' . $url;
+
+        $postFields = json_encode($opts);
 
         if (array_key_exists('file', $opts) || array_key_exists('image', $opts)) {
             $this->headers[0] = $this->contentTypes["multipart/form-data"];
-            $post_fields = $opts;
+            $postFields = $opts;
         } else {
             $this->headers[0] = $this->contentTypes["application/json"];
         }
@@ -464,7 +208,7 @@ class OpenAi
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => $method,
-            CURLOPT_POSTFIELDS => $post_fields,
+            CURLOPT_POSTFIELDS => $postFields,
             CURLOPT_HTTPHEADER => $this->headers,
         ] + $this->curlConfig;
 
@@ -473,7 +217,7 @@ class OpenAi
         }
 
         if (array_key_exists('stream', $opts) && $opts['stream']) {
-            $curl_info[CURLOPT_WRITEFUNCTION] = $this->stream_method;
+            $curl_info[CURLOPT_WRITEFUNCTION] = $this->streamMethod;
         }
 
         $curl = curl_init();
@@ -499,15 +243,5 @@ class OpenAi
         curl_close($curl);
 
         return $response;
-    }
-
-    /**
-     * @param string $url
-     */
-    private function baseUrl(string &$url)
-    {
-        if ($this->customUrl != "") {
-            $url = str_replace(Url::ORIGIN, $this->customUrl, $url);
-        }
     }
 }

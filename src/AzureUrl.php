@@ -17,7 +17,6 @@ class AzureUrl
         $this->apiVersion = $apiVersion ?: date('Y-m-d');
     }
 
-    // build complete API url
     protected function buildUrl(string $path)
     {
         return $this->baseUrl . $path . '?api-version=' . $this->apiVersion;
