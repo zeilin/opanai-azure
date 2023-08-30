@@ -131,9 +131,9 @@ class AzureOpenAi
             $this->streamMethod = $stream;
         }
 
-        unset($opts['model']);
-
         $model = str_replace('.', '', $opts['model']);
+
+        unset($opts['model']);
 
         return $this->sendRequest('/deployments/' . $model .'/chat/completions', 'POST', $opts);
     }
