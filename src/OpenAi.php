@@ -189,7 +189,7 @@ class OpenAi
 
     private function sendRequest(string $url, string $method, array $opts = [])
     {
-        $url = $this->apiBaseUrl . '/' . $url;
+        $url = $this->apiBaseUrl . '/' . ltrim($url, '/');
 
         $postFields = json_encode($opts);
 
@@ -199,6 +199,7 @@ class OpenAi
         } else {
             $this->headers[0] = $this->contentTypes["application/json"];
         }
+
         $curlInfo = [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
@@ -232,12 +233,23 @@ class OpenAi
         $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
         if ($httpCode != 200) {
+
+            $errorMsg = 'HTTP CODE [' . $httpCode . ']';
+
             $errJson = json_decode($response, true);
-            $httpErrMsg = "An error occurred [{$httpCode}]";
-            if (isset($errJson['error'])) {
-                $httpErrMsg = $errJson['error']['type'] . '|' . $errJson['error']['message'];
+
+            if (isset($errJson['object']) && $errJson['object'] == 'error') {
+                $errJson['error'] = [
+                    'type'    => $errJson['code'],
+                    'message' => $errJson['message'],
+                ];
             }
-            throw new OpenAiException('OpenAIError: ' . $httpErrMsg, $httpCode);
+
+            if (isset($errJson['error'])) {
+                $errorMsg = $errJson['error']['type'] . '|' . $errJson['error']['message'];
+            }
+
+            throw new OpenAiException('OpenAIError: ' . $errorMsg, $httpCode);
         }
 
         curl_close($curl);

@@ -100,12 +100,16 @@ class AzureOpenAi
         $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
         if (! in_array($httpCode, [200, 201])) {
+
+            $errorMsg = 'HTTP CODE [' . $httpCode . ']';
+
             $errJson = json_decode($response, true);
-            $httpErrMsg = "An error occurred [{$httpCode}]";
+
             if (isset($errJson['error'])) {
-                $httpErrMsg = $errJson['error']['code'] . '|' . $errJson['error']['message'];
+                $errorMsg = $errJson['error']['type'] . '|' . $errJson['error']['message'];
             }
-            throw new OpenAiException('OpenAIError: ' . $httpErrMsg, $httpCode);
+
+            throw new OpenAiException('OpenAIError: ' . $errorMsg, $httpCode);
         }
 
         curl_close($curl);
