@@ -199,7 +199,7 @@ class OpenAi
         } else {
             $this->headers[0] = $this->contentTypes["application/json"];
         }
-        $curl_info = [
+        $curlInfo = [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
@@ -213,16 +213,16 @@ class OpenAi
         ] + $this->curlConfig;
 
         if ($opts == []) {
-            unset($curl_info[CURLOPT_POSTFIELDS]);
+            unset($curlInfo[CURLOPT_POSTFIELDS]);
         }
 
         if (array_key_exists('stream', $opts) && $opts['stream']) {
-            $curl_info[CURLOPT_WRITEFUNCTION] = $this->streamMethod;
+            $curlInfo[CURLOPT_WRITEFUNCTION] = $this->streamMethod;
         }
 
         $curl = curl_init();
 
-        curl_setopt_array($curl, $curl_info);
+        curl_setopt_array($curl, $curlInfo);
         $response = curl_exec($curl);
 
         if ($response === false || curl_errno($curl)) {
