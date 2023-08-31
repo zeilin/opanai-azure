@@ -119,6 +119,8 @@ class AzureOpenAi
 
     public function embeddings(array $opts)
     {
+        $model = str_replace('.', '', $opts['model']);
+
         unset($opts['model']);
 
         return $this->sendRequest('/deployments/' . $model .'/embeddings', 'POST', $opts);
@@ -152,6 +154,8 @@ class AzureOpenAi
             }
             $this->streamMethod = $stream;
         }
+
+        $model = str_replace('.', '', $opts['model']);
 
         unset($opts['model']);
 
