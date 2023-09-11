@@ -232,7 +232,7 @@ class OpenAi
 
         $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
-        if ($httpCode != 200) {
+        if (! in_array($httpCode, [200, 201])) {
 
             $errorMsg = 'HTTP CODE [' . $httpCode . ']';
 
