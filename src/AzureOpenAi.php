@@ -106,7 +106,11 @@ class AzureOpenAi
             $errJson = json_decode($response, true);
 
             if (isset($errJson['error'])) {
-                $errorMsg = $errJson['error']['type'] . '|' . $errJson['error']['message'];
+
+                $errCode = isset($errJson['error']['type']) ? $errJson['error']['type'] : ($errJson['error']['code'] ?? 'Unknown Err');
+                $errTip = $errJson['error']['message'] ?? 'Unknown Msg';
+
+                $errorMsg = $errCode . '|' . $errTip;
             }
 
             throw new OpenAiException('OpenAIError: ' . $errorMsg, $httpCode);
