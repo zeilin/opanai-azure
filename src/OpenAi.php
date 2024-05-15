@@ -14,7 +14,9 @@ class OpenAi
 
     private int $timeout = 300;
     private array $curlConfig = [];
+
     private string $apiBaseUrl = 'https://api.openai.com/v1';
+    private string $chatApiUrl = '/chat/completions';
 
     public function __construct(string $OPENAI_API_KEY = '', string $OPENAI_ORG = '')
     {
@@ -36,6 +38,11 @@ class OpenAi
     public function setApiBaseUrl(string $url)
     {
         $this->apiBaseUrl = $url;
+    }
+
+    public function setChatApiUrl(string $url)
+    {
+        $this->chatApiUrl = $url;
     }
 
     public function setCurlConfig(array $conf)
@@ -114,7 +121,7 @@ class OpenAi
 
         $opts['model'] = $opts['model'] ?? $this->chatModel;
 
-        return $this->sendRequest('/chat/completions', 'POST', $opts);
+        return $this->sendRequest($this->chatApiUrl ?: '/chat/completions', 'POST', $opts);
     }
 
     public function transcribe($opts)
