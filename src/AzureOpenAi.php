@@ -2,6 +2,9 @@
 
 namespace Ze\OpenAi;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Stream\Stream;
+use Illuminate\Support\Facades\Log;
 use Ze\OpenAi\Exceptions\OpenAiException;
 
 class AzureOpenAi
@@ -15,13 +18,29 @@ class AzureOpenAi
         'multipart/form-data' => 'Content-Type: multipart/form-data',
     ];
 
+    /** 回调方法
+     * @var callable
+     */
     private $streamMethod;
+
+    /** 回调方法
+     * @var callable
+     */
+    public $endMethod = null;
+
+    private $response = "";
 
     private int $timeout = 300;
     private array $curlConfig = [];
 
     private string $apiBaseUrl = 'https://goldentech.openai.azure.com/openai';
     private string $apiVersion = '2023-07-01';
+
+    public array $models = [
+        'gpt35' => 'gpt-3.5-turbo',
+    ];
+
+    private array $opts = [];
 
     public function __construct(string $authKey, string $apiVersion = null, int $authType = self::AUTH_API_KEY)
     {
@@ -57,7 +76,7 @@ class AzureOpenAi
 
     private function sendRequest(string $url, string $method, array $opts = [])
     {
-        $url = $this->apiBaseUrl . '/' . $url . '?api-version=' . $this->apiVersion;
+        $url = $this->apiBaseUrl . $url . '?api-version=' . $this->apiVersion;
 
         $postFields = json_encode($opts);
 
@@ -123,6 +142,96 @@ class AzureOpenAi
         curl_close($curl);
 
         return $response;
+    }
+
+    /**
+     * @param string $url
+     * @param array $data
+     * @return array
+     * @throws OpenAiException
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
+    private function sendRequestStream(string $url, array $data = [])
+    {
+        $url = $this->apiBaseUrl . $url . '?api-version=' . $this->apiVersion;
+        $body = (new Client)->request("POST", $url, $this->opts)->getBody();
+
+        $result = [];
+        $this->response = $buffer = '';
+        while (!$body->eof()) {
+            $buffer .= $body->read(256);
+            while (($pos = strpos($buffer, PHP_EOL . PHP_EOL)) !== false) {
+                $data = substr($buffer, 0, $pos);
+                $buffer = substr($buffer, $pos + 2);
+
+                empty($result['raw']) && $result['raw'] = $data;
+                $msg = strtolower(trim($data));
+                if (connection_aborted() || $data === "data: [DONE]") {
+                    is_callable($this->endMethod) && call_user_func($this->endMethod, $data);
+                    break 2;
+                } elseif (in_array($msg, ['data: [continue]', "rate limit.."]) || "data: " != substr($data, 0, 6)) {
+                    throw new OpenAiException("OpenAi error: " . $data, 500);
+                }
+
+                $json = json_decode(substr($data, 6), true);
+                if (empty($json) || JSON_ERROR_NONE !== json_last_error()) {
+                    throw new OpenAiException("OpenAi JSON error: " . json_last_error_msg() . ": {$data}", json_last_error());
+                }
+
+                $text = $json['choices'][0]['delta']['content'] ?? "";
+                $this->response .= $text;
+                $this->streamClient($text);
+            }
+        }
+        echo PHP_EOL . PHP_EOL;
+        $result['content'] = $this->response;
+        return $result;
+    }
+
+    protected function streamClient($text)
+    {
+        if (!headers_sent()) {
+            header("Content-Type: text/event-stream");
+            header("X-Accel-Buffering: no");
+            header("Cach-Control: no-cache");
+        }
+
+        echo Stream::factory(is_callable($this->streamMethod) ? call_user_func($this->streamMethod, $text) : $text);
+
+        ob_get_length() && ob_flush();
+        flush();
+    }
+
+    public function chatStream(string $model = "gpt35")
+    {
+        $headers = [];
+        foreach ($this->headers as $item) {
+            $one = explode(":", $item);
+            $headers[ trim($one[0]) ] = trim($one[1]);
+        }
+
+        $model = str_replace('.', '', $model);
+        $this->opts = array_merge([
+            'stream' => true,
+            "timeout" => $this->timeout,
+            'model' => $this->models[$model],
+            "headers" => $headers,
+        ], $this->opts);
+
+        return $this->sendRequestStream("/deployments/{$model}/chat/completions");
+    }
+
+    public function setFunc($name, callable $func = null)
+    {
+        is_callable($func) && $this->$name = $func;
+        return $this;
+    }
+
+    public function setOpts(array $data)
+    {
+        $data['stream'] = true;
+        $this->opts['json'] = $data;
+        return $this;
     }
 
     public function embeddings(array $opts)
