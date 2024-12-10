@@ -4,12 +4,11 @@ namespace Ze\OpenAi;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Stream\Stream;
-use Illuminate\Support\Facades\Log;
 use Ze\OpenAi\Exceptions\OpenAiException;
 
 class AzureOpenAi
 {
-    const
+    public const
         AUTH_API_KEY = 1,
         AUTH_API_TOKEN = 2;
 
@@ -45,7 +44,7 @@ class AzureOpenAi
     public function __construct(string $authKey, string $apiVersion = null, int $authType = self::AUTH_API_KEY)
     {
         $this->headers = [
-            $this->contentTypes['application/json']
+            $this->contentTypes['application/json'],
         ];
 
         if ($authType == self::AUTH_API_KEY) {
@@ -126,7 +125,7 @@ class AzureOpenAi
 
             if (isset($errJson['object']) && $errJson['object'] == 'error') {
                 $errJson['error'] = [
-                    'type'    => $errJson['code'],
+                    'type' => $errJson['code'],
                     'message' => $errJson['message'],
                 ];
             }
@@ -154,11 +153,11 @@ class AzureOpenAi
     private function sendRequestStream(string $url, array $data = [])
     {
         $url = $this->apiBaseUrl . $url . '?api-version=' . $this->apiVersion;
-        $body = (new Client)->request("POST", $url, $this->opts)->getBody();
+        $body = (new Client())->request("POST", $url, $this->opts)->getBody();
 
         $result = [];
         $this->response = $buffer = '';
-        while (!$body->eof()) {
+        while (! $body->eof()) {
             $buffer .= $body->read(256);
             while (($pos = strpos($buffer, PHP_EOL . PHP_EOL)) !== false) {
                 $data = substr($buffer, 0, $pos);
@@ -168,6 +167,7 @@ class AzureOpenAi
                 $msg = strtolower(trim($data));
                 if (connection_aborted() || $data === "data: [DONE]") {
                     is_callable($this->endMethod) && call_user_func($this->endMethod, $data);
+
                     break 2;
                 } elseif (in_array($msg, ['data: [continue]', "rate limit.."]) || "data: " != substr($data, 0, 6)) {
                     throw new OpenAiException("OpenAi error: " . $data, 500);
@@ -185,12 +185,13 @@ class AzureOpenAi
         }
         echo PHP_EOL . PHP_EOL;
         $result['content'] = $this->response;
+
         return $result;
     }
 
     protected function streamClient($text)
     {
-        if (!headers_sent()) {
+        if (! headers_sent()) {
             header("Content-Type: text/event-stream");
             header("X-Accel-Buffering: no");
             header("Cach-Control: no-cache");
@@ -224,6 +225,7 @@ class AzureOpenAi
     public function setFunc($name, callable $func = null)
     {
         is_callable($func) && $this->$name = $func;
+
         return $this;
     }
 
@@ -231,6 +233,7 @@ class AzureOpenAi
     {
         $data['stream'] = true;
         $this->opts['json'] = $data;
+
         return $this;
     }
 

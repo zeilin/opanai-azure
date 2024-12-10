@@ -247,7 +247,7 @@ class OpenAi
 
             if (isset($errJson['object']) && $errJson['object'] == 'error') {
                 $errJson['error'] = [
-                    'type'    => $errJson['code'],
+                    'type' => $errJson['code'],
                     'message' => $errJson['message'],
                 ];
             }

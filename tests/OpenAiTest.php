@@ -235,8 +235,8 @@ it('should handle simple chat completion using the new endpoint', function () us
         'messages' => [
             [
                 "role" => "user",
-                "content" => "Hello!"
-            ]
+                "content" => "Hello!",
+            ],
         ],
         'temperature' => 0.9,
         "max_tokens" => 150,
